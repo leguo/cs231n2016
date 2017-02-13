@@ -45,7 +45,13 @@ class TwoLayerNet(object):
     # weights and biases using the keys 'W1' and 'b1' and second layer weights #
     # and biases using the keys 'W2' and 'b2'.                                 #
     ############################################################################
-    pass
+    D = input_dim
+    H = hidden_dim
+    C = num_classes
+    self.params['W1'] = np.random.normal(0, weight_scale, (D, H))
+    self.params['b1'] = np.zeros((D,))
+    self.params['W2'] = np.random.normal(0, weight_scale, (H, C))
+    self.params['b2'] = np.zeros((C,))
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -75,7 +81,14 @@ class TwoLayerNet(object):
     # TODO: Implement the forward pass for the two-layer net, computing the    #
     # class scores for X and storing them in the scores variable.              #
     ############################################################################
-    pass
+    W1 = self.params['W1'] # (D,H)
+    b1 = self.params['b1'] # (H,)
+    o1, cache1 = affine_relu_forward(X, W1, b1) # (N,H)
+
+    W2 = self.params['W2']
+    b2 = self.params['b2']
+
+    scores, cache2 = affine_forward(o1, W2, b2)
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -95,7 +108,14 @@ class TwoLayerNet(object):
     # automated tests, make sure that your L2 regularization includes a factor #
     # of 0.5 to simplify the expression for the gradient.                      #
     ############################################################################
-    pass
+    loss, do2 = softmax_loss(scores, y)
+    do1, dW2, db2 = affine_backward(do2, cache2)
+    dX, dW1, db1 = affine_relu_backward(do1, cache1)
+
+    loss = loss + self.reg * 0.5 * (np.sum(W1*W1) + np.sum(W2*W2))
+    dW2 += self.reg * W2
+    dW1 += self.reg * W1
+    grads = {'W1':dW1, 'W2':dW2, 'b1':db1, 'b2':db2}
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
