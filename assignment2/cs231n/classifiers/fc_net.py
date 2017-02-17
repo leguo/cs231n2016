@@ -187,11 +187,11 @@ class FullyConnectedNet(object):
       i = j + 1
       self.params['W' + str(i)] = np.random.normal(0, weight_scale, (D, Hi))
       self.params['b' + str(i)] = np.zeros((Hi,))
-      #if use_batchnorm:
-      #  gammai = 'gamma' + str(i)
-      #  betai = 'beta' + str(i)
-      #  self.params[gammai] = np.ones((D, ))
-      #  self.params[betai] = np.zeros((D))
+      if use_batchnorm:
+        gammai = 'gamma' + str(i)
+        betai = 'beta' + str(i)
+        self.params[gammai] = np.ones((Hi, ))
+        self.params[betai] = np.zeros((Hi, ))
       D = Hi
     self.params['W'+str(self.num_layers)] = np.random.normal(0, weight_scale, (D, C))
     self.params['b'+str(self.num_layers)] = np.random.normal(0, weight_scale, (C,))
@@ -255,20 +255,28 @@ class FullyConnectedNet(object):
     # self.bn_params[1] to the forward pass for the second batch normalization #
     # layer, etc.                                                              #
     ############################################################################
-    output = []
     cache = []
 
     o = X
     for i in range(1, self.num_layers):
       Wi = self.params['W'+str(i)]
       bi = self.params['b'+str(i)]
-      o, c = affine_relu_forward(o, Wi, bi)
-      output.append(o)
+
+      o, c = affine_forward(o, Wi, bi)
       cache.append(c)
+
+      if self.use_batchnorm:
+        gammai = self.params['gamma'+str(i)]
+        betai = self.params['beta'+str(i)]
+        o, c = batchnorm_forward(o, gammai, betai, self.bn_params[i-1])
+        cache.append(c)
+
+      o, c = relu_forward(o)
+      cache.append(c)
+
     Wi = self.params['W'+str(self.num_layers)]
     bi = self.params['b'+str(self.num_layers)]
     scores, c = affine_forward(o, Wi, bi)
-
 
     ############################################################################
     #                             END OF YOUR CODE                             #
@@ -303,7 +311,17 @@ class FullyConnectedNet(object):
     grads['b' + str(self.num_layers)] = dbi
 
     for i in range(self.num_layers-1 , 0, -1):
-      din, dWi, dbi = affine_relu_backward(doi, cache[i-1])
+      cache_relu = cache.pop()
+      din = relu_backward(doi, cache_relu)
+
+      if self.use_batchnorm:
+        cache_bn = cache.pop()
+        din, dgamma, dbeta = batchnorm_backward_alt(din, cache_bn)
+        grads['gamma'+str(i)] = dgamma
+        grads['beta'+str(i)] = dbeta
+
+      cache_affine = cache.pop()
+      din, dWi, dbi = affine_backward(din, cache_affine)
       grads['W'+str(i)] = dWi + self.reg * self.params['W'+str(i)]
       grads['b'+str(i)] = dbi
       doi = din
