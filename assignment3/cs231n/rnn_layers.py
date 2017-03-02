@@ -181,7 +181,8 @@ def word_embedding_forward(x, W):
   #                                                                            #
   # HINT: This should be very simple.                                          #
   ##############################################################################
-  pass
+  out = W[x]
+  cache = (x, W)
   ##############################################################################
   #                               END OF YOUR CODE                             #
   ##############################################################################
@@ -209,7 +210,18 @@ def word_embedding_backward(dout, cache):
   #                                                                            #
   # HINT: Look up the function np.add.at                                       #
   ##############################################################################
-  pass
+  x, W = cache
+
+  dW = np.zeros_like(W) # (V, D)
+  np.add.at(dW, x, dout)
+  """
+  forward:
+    locate embedding using the index (x[n, t]) from the list of Weights in W
+    i.e. "out[n, t, :] = W[x[n, t]]"
+  back_propagate:
+    we pass on the weight to only that word which was represented.
+    This we do through "np.add.at(dW, x[n, t], dout[n, t, :])"
+  """
   ##############################################################################
   #                               END OF YOUR CODE                             #
   ##############################################################################

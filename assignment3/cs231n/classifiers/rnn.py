@@ -135,7 +135,27 @@ class CaptioningRNN(object):
     # defined above to store loss and gradients; grads[k] should give the      #
     # gradients for self.params[k].                                            #
     ############################################################################
-    pass
+    h0, cache_proj = affine_forward(features, W_proj, b_proj)
+    x, cache_embed = word_embedding_forward(captions_in, W_embed)
+    h, cache_rnn = rnn_forward(x, h0, Wx, Wh, b)
+    scores, cache_vocab = temporal_affine_forward(h, W_vocab, b_vocab)
+    loss, dscore = temporal_softmax_loss(scores, captions_out, mask)
+
+    # bp
+    dh, dW_vocab, db_vocab = temporal_affine_backward(dscore, cache_vocab)
+    dx, dh0, dWx, dWh, db = rnn_backward(dh, cache_rnn)
+    dW_embed = word_embedding_backward(dx, cache_embed)
+    dfeatures, dW_proj, db_proj = affine_backward(dh0, cache_proj)
+    grads = {
+      'W_proj': dW_proj,
+      'b_proj': db_proj,
+      'W_embed': dW_embed,
+      'Wx': dWx,
+      'Wh': dWh,
+      'b': db,
+      'W_vocab': dW_vocab,
+      'b_vocab': db_vocab
+    }
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -197,7 +217,18 @@ class CaptioningRNN(object):
     # functions; you'll need to call rnn_step_forward or lstm_step_forward in #
     # a loop.                                                                 #
     ###########################################################################
-    pass
+    h, cache_proj = affine_forward(features, W_proj, b_proj)
+
+    captions_next = self._start * np.ones((N, 1), dtype=np.int32)
+    for t in range(max_length):
+      # x (N, T, D)
+      x, cache_embed = word_embedding_forward(captions_next, W_embed)
+      x = np.squeeze(x, axis=1) # (N, D)
+      h, cache_rnn = rnn_step_forward(x, h, Wx, Wh, b)
+      scores, cache_vocab = temporal_affine_forward(np.expand_dims(h, axis=1), W_vocab, b_vocab)
+      # scores (N, T, M)
+      captions_next = np.argmax(scores, axis=2) # (N, T)
+      captions[:, t] = np.squeeze(captions_next, axis=1)
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
